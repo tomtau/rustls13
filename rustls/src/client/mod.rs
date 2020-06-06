@@ -26,7 +26,6 @@ use webpki;
 
 #[macro_use]
 mod hs;
-mod tls12;
 mod tls13;
 mod common;
 pub mod handy;
@@ -156,7 +155,7 @@ impl ClientConfig {
             mtu: None,
             client_auth_cert_resolver: Arc::new(handy::FailResolveClientCert {}),
             enable_tickets: true,
-            versions: vec![ProtocolVersion::TLSv1_3, ProtocolVersion::TLSv1_2],
+            versions: vec![ProtocolVersion::TLSv1_3],
             ct_logs: None,
             enable_sni: true,
             verifier: Arc::new(verify::WebPKIVerifier::new()),

@@ -1,5 +1,4 @@
 use crate::msgs::handshake::CertificatePayload;
-use crate::msgs::handshake::DigitallySignedStruct;
 use crate::msgs::handshake::SessionID;
 use crate::msgs::handshake::SCTList;
 use crate::msgs::handshake::ServerExtension;
@@ -34,20 +33,6 @@ impl ServerCertDetails {
 
     pub fn take_chain(&mut self) -> CertificatePayload {
         mem::replace(&mut self.cert_chain, Vec::new())
-    }
-}
-
-pub struct ServerKXDetails {
-    pub kx_params: Vec<u8>,
-    pub kx_sig: DigitallySignedStruct,
-}
-
-impl ServerKXDetails {
-    pub fn new(params: Vec<u8>, sig: DigitallySignedStruct) -> ServerKXDetails {
-        ServerKXDetails {
-            kx_params: params,
-            kx_sig: sig,
-        }
     }
 }
 
@@ -129,24 +114,6 @@ impl ClientHelloDetails {
         }
 
         false
-    }
-}
-
-pub struct ReceivedTicketDetails {
-    pub new_ticket: Vec<u8>,
-    pub new_ticket_lifetime: u32,
-}
-
-impl ReceivedTicketDetails {
-    pub fn new() -> ReceivedTicketDetails {
-        ReceivedTicketDetails::from(Vec::new(), 0)
-    }
-
-    pub fn from(ticket: Vec<u8>, lifetime: u32) -> ReceivedTicketDetails {
-        ReceivedTicketDetails {
-            new_ticket: ticket,
-            new_ticket_lifetime: lifetime,
-        }
     }
 }
 

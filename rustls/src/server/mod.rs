@@ -21,7 +21,6 @@ use std::fmt;
 
 #[macro_use]
 mod hs;
-mod tls12;
 mod tls13;
 mod common;
 pub mod handy;
@@ -209,7 +208,7 @@ impl ServerConfig {
             ticketer: Arc::new(handy::NeverProducesTickets {}),
             alpn_protocols: Vec::new(),
             cert_resolver: Arc::new(handy::FailResolveChain {}),
-            versions: vec![ ProtocolVersion::TLSv1_3, ProtocolVersion::TLSv1_2 ],
+            versions: vec![ ProtocolVersion::TLSv1_3 ],
             verifier: client_cert_verifier,
             key_log: Arc::new(NoKeyLog {}),
             #[cfg(feature = "quic")]

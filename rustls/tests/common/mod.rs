@@ -293,10 +293,6 @@ impl Iterator for AllClientVersions {
 
         match self.index {
             1 => {
-                config.versions = vec![ProtocolVersion::TLSv1_2];
-                Some(config)
-            },
-            2 => {
                 config.versions = vec![ProtocolVersion::TLSv1_3];
                 Some(config)
             },

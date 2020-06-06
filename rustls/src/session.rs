@@ -1,4 +1,3 @@
-use ring;
 use std::io::{Read, Write};
 use crate::msgs::message::{BorrowMessage, Message, MessagePayload};
 use crate::msgs::deframer::MessageDeframer;
@@ -9,10 +8,8 @@ use crate::msgs::codec::Codec;
 use crate::msgs::enums::{ContentType, ProtocolVersion, AlertDescription, AlertLevel};
 use crate::error::TLSError;
 use crate::suites::SupportedCipherSuite;
-use crate::cipher;
 use crate::vecbuf::ChunkVecBuffer;
 use crate::key;
-use crate::prf;
 use crate::rand;
 use crate::quic;
 use crate::record_layer;
@@ -214,8 +211,6 @@ pub struct SessionRandoms {
     pub server: [u8; 32],
 }
 
-static TLS12_DOWNGRADE_SENTINEL: &[u8] = &[0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x01];
-
 impl SessionRandoms {
     pub fn for_server() -> SessionRandoms {
         let mut ret = SessionRandoms {
@@ -239,148 +234,6 @@ impl SessionRandoms {
         ret
     }
 
-    pub fn set_tls12_downgrade_marker(&mut self) {
-        assert!(!self.we_are_client);
-        self.server[24..]
-            .as_mut()
-            .write_all(TLS12_DOWNGRADE_SENTINEL)
-            .unwrap();
-    }
-
-    pub fn has_tls12_downgrade_marker(&mut self) -> bool {
-        assert!(self.we_are_client);
-        // both the server random and TLS12_DOWNGRADE_SENTINEL are
-        // public values and don't require constant time comparison
-        &self.server[24..] == TLS12_DOWNGRADE_SENTINEL
-    }
-}
-
-fn join_randoms(first: &[u8], second: &[u8]) -> [u8; 64] {
-    let mut randoms = [0u8; 64];
-    randoms.as_mut().write_all(first).unwrap();
-    randoms[32..].as_mut().write_all(second).unwrap();
-    randoms
-}
-
-/// TLS1.2 per-session keying material
-pub struct SessionSecrets {
-    pub randoms: SessionRandoms,
-    hash: &'static ring::digest::Algorithm,
-    pub master_secret: [u8; 48],
-}
-
-impl SessionSecrets {
-    pub fn new(randoms: &SessionRandoms,
-               hashalg: &'static ring::digest::Algorithm,
-               pms: &[u8])
-               -> SessionSecrets {
-        let mut ret = SessionSecrets {
-            randoms: randoms.clone(),
-            hash: hashalg,
-            master_secret: [0u8; 48],
-        };
-
-        let randoms = join_randoms(&ret.randoms.client, &ret.randoms.server);
-        prf::prf(&mut ret.master_secret,
-                 ret.hash,
-                 pms,
-                 b"master secret",
-                 &randoms);
-        ret
-    }
-
-    pub fn new_ems(randoms: &SessionRandoms,
-                   hs_hash: &[u8],
-                   hashalg: &'static ring::digest::Algorithm,
-                   pms: &[u8]) -> SessionSecrets {
-        let mut ret = SessionSecrets {
-            randoms: randoms.clone(),
-            hash: hashalg,
-            master_secret: [0u8; 48]
-        };
-
-        prf::prf(&mut ret.master_secret,
-                 ret.hash,
-                 pms,
-                 b"extended master secret",
-                 hs_hash);
-        ret
-    }
-
-    pub fn new_resume(randoms: &SessionRandoms,
-                      hashalg: &'static ring::digest::Algorithm,
-                      master_secret: &[u8])
-                      -> SessionSecrets {
-        let mut ret = SessionSecrets {
-            randoms: randoms.clone(),
-            hash: hashalg,
-            master_secret: [0u8; 48],
-        };
-        ret.master_secret.as_mut().write_all(master_secret).unwrap();
-        ret
-    }
-
-    pub fn make_key_block(&self, len: usize) -> Vec<u8> {
-        let mut out = Vec::new();
-        out.resize(len, 0u8);
-
-        // NOTE: opposite order to above for no good reason.
-        // Don't design security protocols on drugs, kids.
-        let randoms = join_randoms(&self.randoms.server, &self.randoms.client);
-        prf::prf(&mut out,
-                 self.hash,
-                 &self.master_secret,
-                 b"key expansion",
-                 &randoms);
-
-        out
-    }
-
-    pub fn get_master_secret(&self) -> Vec<u8> {
-        let mut ret = Vec::new();
-        ret.extend_from_slice(&self.master_secret);
-        ret
-    }
-
-    pub fn make_verify_data(&self, handshake_hash: &[u8], label: &[u8]) -> Vec<u8> {
-        let mut out = Vec::new();
-        out.resize(12, 0u8);
-
-        prf::prf(&mut out,
-                 self.hash,
-                 &self.master_secret,
-                 label,
-                 handshake_hash);
-        out
-    }
-
-    pub fn client_verify_data(&self, handshake_hash: &[u8]) -> Vec<u8> {
-        self.make_verify_data(handshake_hash, b"client finished")
-    }
-
-    pub fn server_verify_data(&self, handshake_hash: &[u8]) -> Vec<u8> {
-        self.make_verify_data(handshake_hash, b"server finished")
-    }
-
-    pub fn export_keying_material(&self,
-                                  output: &mut [u8],
-                                  label: &[u8],
-                                  context: Option<&[u8]>) {
-        let mut randoms = Vec::new();
-        randoms.extend_from_slice(&self.randoms.client);
-        randoms.extend_from_slice(&self.randoms.server);
-        if let Some(context) = context {
-            assert!(context.len() <= 0xffff);
-            (context.len() as u16).encode(&mut randoms);
-            randoms.extend_from_slice(context);
-        }
-
-        prf::prf(output,
-                 self.hash,
-                 &self.master_secret,
-                 label,
-                 &randoms)
-    }
 }
 
 // --- Common (to client and server) session functions ---
@@ -695,12 +548,6 @@ impl SessionCommon {
         }
 
         Ok(len)
-    }
-
-    pub fn start_encryption_tls12(&mut self, secrets: &SessionSecrets) {
-        let (dec, enc) = cipher::new_tls12(self.get_suite_assert(), secrets);
-        self.record_layer.prepare_message_encrypter(enc);
-        self.record_layer.prepare_message_decrypter(dec);
     }
 
     pub fn send_warning_alert(&mut self, desc: AlertDescription) {

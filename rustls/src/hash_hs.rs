@@ -1,5 +1,4 @@
 use ring::digest;
-use std::mem;
 use crate::msgs::codec::Codec;
 use crate::msgs::message::{Message, MessagePayload};
 use crate::msgs::handshake::HandshakeMessagePayload;
@@ -141,13 +140,6 @@ impl HandshakeHash {
         ret
     }
 
-    /// Takes this object's buffer containing all handshake messages
-    /// so far.  This method only works once; it resets the buffer
-    /// to empty.
-    pub fn take_handshake_buf(&mut self) -> Vec<u8> {
-        debug_assert!(self.client_auth_enabled);
-        mem::replace(&mut self.buffer, Vec::new())
-    }
 }
 
 #[cfg(test)]
@@ -185,8 +177,8 @@ mod test {
         assert_eq!(h[1], 0x6a);
         assert_eq!(h[2], 0x18);
         assert_eq!(h[3], 0x5c);
-        let buf = hh.take_handshake_buf();
-        assert_eq!(b"helloworld".to_vec(), buf);
+        // let buf = hh.take_handshake_buf();
+        // assert_eq!(b"helloworld".to_vec(), buf);
     }
 
     #[test]

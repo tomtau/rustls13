@@ -240,7 +240,7 @@ impl SupportedCipherSuite {
     pub fn usable_for_version(&self, version: ProtocolVersion) -> bool {
         match version {
             ProtocolVersion::TLSv1_3 => self.sign == SignatureAlgorithm::Anonymous,
-            ProtocolVersion::TLSv1_2 => self.sign != SignatureAlgorithm::Anonymous,
+            // ProtocolVersion::TLSv1_2 => self.sign != SignatureAlgorithm::Anonymous,
             _ => false,
         }
     }
@@ -252,91 +252,12 @@ impl SupportedCipherSuite {
             // TLS1.3 actually specifies requirements here: suites are compatible
             // for resumption if they have the same KDF hash
             self.hash == new_suite.hash
-        } else if self.usable_for_version(ProtocolVersion::TLSv1_2) &&
-            new_suite.usable_for_version(ProtocolVersion::TLSv1_2) {
-            // Previous versions don't specify any constraint, so we don't
-            // resume between suites to avoid bad interactions.
-            self.suite == new_suite.suite
         } else {
             // Suites for different versions definitely can't resume!
             false
         }
     }
 }
-
-pub static TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256: SupportedCipherSuite =
-    SupportedCipherSuite {
-        suite: CipherSuite::TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-        kx: KeyExchangeAlgorithm::ECDHE,
-        sign: SignatureAlgorithm::ECDSA,
-        bulk: BulkAlgorithm::CHACHA20_POLY1305,
-        hash: HashAlgorithm::SHA256,
-        enc_key_len: 32,
-        fixed_iv_len: 12,
-        explicit_nonce_len: 0,
-        hkdf_algorithm: ring::hkdf::HKDF_SHA256,
-    };
-
-pub static TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256: SupportedCipherSuite =
-    SupportedCipherSuite {
-        suite: CipherSuite::TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-        kx: KeyExchangeAlgorithm::ECDHE,
-        sign: SignatureAlgorithm::RSA,
-        bulk: BulkAlgorithm::CHACHA20_POLY1305,
-        hash: HashAlgorithm::SHA256,
-        enc_key_len: 32,
-        fixed_iv_len: 12,
-        explicit_nonce_len: 0,
-        hkdf_algorithm: ring::hkdf::HKDF_SHA256,
-    };
-
-pub static TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256: SupportedCipherSuite = SupportedCipherSuite {
-    suite: CipherSuite::TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-    kx: KeyExchangeAlgorithm::ECDHE,
-    sign: SignatureAlgorithm::RSA,
-    bulk: BulkAlgorithm::AES_128_GCM,
-    hash: HashAlgorithm::SHA256,
-    enc_key_len: 16,
-    fixed_iv_len: 4,
-    explicit_nonce_len: 8,
-    hkdf_algorithm: ring::hkdf::HKDF_SHA256,
-};
-
-pub static TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384: SupportedCipherSuite = SupportedCipherSuite {
-    suite: CipherSuite::TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-    kx: KeyExchangeAlgorithm::ECDHE,
-    sign: SignatureAlgorithm::RSA,
-    bulk: BulkAlgorithm::AES_256_GCM,
-    hash: HashAlgorithm::SHA384,
-    enc_key_len: 32,
-    fixed_iv_len: 4,
-    explicit_nonce_len: 8,
-    hkdf_algorithm: ring::hkdf::HKDF_SHA384,
-};
-
-pub static TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256: SupportedCipherSuite = SupportedCipherSuite {
-    suite: CipherSuite::TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-    kx: KeyExchangeAlgorithm::ECDHE,
-    sign: SignatureAlgorithm::ECDSA,
-    bulk: BulkAlgorithm::AES_128_GCM,
-    hash: HashAlgorithm::SHA256,
-    enc_key_len: 16,
-    fixed_iv_len: 4,
-    explicit_nonce_len: 8,
-    hkdf_algorithm: ring::hkdf::HKDF_SHA256,
-};
-
-pub static TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384: SupportedCipherSuite = SupportedCipherSuite {
-    suite: CipherSuite::TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-    kx: KeyExchangeAlgorithm::ECDHE,
-    sign: SignatureAlgorithm::ECDSA,
-    bulk: BulkAlgorithm::AES_256_GCM,
-    hash: HashAlgorithm::SHA384,
-    enc_key_len: 32,
-    fixed_iv_len: 4,
-    explicit_nonce_len: 8,
-    hkdf_algorithm: ring::hkdf::HKDF_SHA384,
-};
 
 pub static TLS13_CHACHA20_POLY1305_SHA256: SupportedCipherSuite = SupportedCipherSuite {
     suite: CipherSuite::TLS13_CHACHA20_POLY1305_SHA256,
@@ -375,19 +296,12 @@ pub static TLS13_AES_128_GCM_SHA256: SupportedCipherSuite = SupportedCipherSuite
 };
 
 /// A list of all the cipher suites supported by rustls.
-pub static ALL_CIPHERSUITES: [&SupportedCipherSuite; 9] = [
+pub static ALL_CIPHERSUITES: [&SupportedCipherSuite; 3] = [
     // TLS1.3 suites
     &TLS13_CHACHA20_POLY1305_SHA256,
     &TLS13_AES_256_GCM_SHA384,
     &TLS13_AES_128_GCM_SHA256,
 
-    // TLS1.2 suites
-    &TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-    &TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-    &TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-    &TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-    &TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-    &TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 ];
 
 // These both O(N^2)!
@@ -450,30 +364,6 @@ mod test {
     use crate::msgs::enums::CipherSuite;
 
     #[test]
-    fn test_client_pref() {
-        let client = vec![CipherSuite::TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-                          CipherSuite::TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384];
-        let server = vec![&TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-                          &TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256];
-        let chosen = choose_ciphersuite_preferring_client(&client, &server);
-        assert!(chosen.is_some());
-        assert_eq!(chosen.unwrap(),
-                   &TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256);
-    }
-
-    #[test]
-    fn test_server_pref() {
-        let client = vec![CipherSuite::TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-                          CipherSuite::TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384];
-        let server = vec![&TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-                          &TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256];
-        let chosen = choose_ciphersuite_preferring_server(&client, &server);
-        assert!(chosen.is_some());
-        assert_eq!(chosen.unwrap(),
-                   &TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384);
-    }
-
-    #[test]
     fn test_pref_fails() {
         assert!(choose_ciphersuite_preferring_client(&[CipherSuite::TLS_NULL_WITH_NULL_NULL], &ALL_CIPHERSUITES).is_none());
         assert!(choose_ciphersuite_preferring_server(&[CipherSuite::TLS_NULL_WITH_NULL_NULL], &ALL_CIPHERSUITES).is_none());
@@ -492,30 +382,16 @@ mod test {
             assert!(scs.usable_for_version(ProtocolVersion::TLSv1_3));
         }
 
-        fn ok_tls12(scs: &SupportedCipherSuite) {
-            assert!(!scs.usable_for_version(ProtocolVersion::TLSv1_0));
-            assert!(scs.usable_for_version(ProtocolVersion::TLSv1_2));
-            assert!(!scs.usable_for_version(ProtocolVersion::TLSv1_3));
-        }
-
         ok_tls13(&TLS13_CHACHA20_POLY1305_SHA256);
         ok_tls13(&TLS13_AES_256_GCM_SHA384);
         ok_tls13(&TLS13_AES_128_GCM_SHA256);
 
-        ok_tls12(&TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256);
-        ok_tls12(&TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256);
-        ok_tls12(&TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384);
-        ok_tls12(&TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256);
-        ok_tls12(&TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384);
     }
 
     #[test]
     fn test_can_resume_to() {
         assert!(TLS13_CHACHA20_POLY1305_SHA256.can_resume_to(&TLS13_AES_128_GCM_SHA256));
         assert!(!TLS13_CHACHA20_POLY1305_SHA256.can_resume_to(&TLS13_AES_256_GCM_SHA384));
-        assert!(!TLS13_CHACHA20_POLY1305_SHA256.can_resume_to(&TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256));
-        assert!(!TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256.can_resume_to(&TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256));
-        assert!(TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256.can_resume_to(&TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256));
     }
 
 }

@@ -180,6 +180,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_env_var_cannot_be_written() {
         init();
         let mut inner = KeyLogFileInner::new(Ok("/dev/full".into()));

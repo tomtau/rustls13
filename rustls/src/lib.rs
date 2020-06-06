@@ -222,7 +222,6 @@ mod error;
 mod rand;
 mod hash_hs;
 mod vecbuf;
-mod prf;
 mod cipher;
 mod record_layer;
 mod key_schedule;
